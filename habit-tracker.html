@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Habit Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; color: #222; margin: 0; }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 2em;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      position: relative;
+    }
+    h1 { text-align: center; color: #4caf50; }
+    .month-setting { margin-bottom: 1em; display: flex; align-items: center; gap: 8px; }
+    .month-setting label { font-weight: bold; color: #388e3c; }
+    .month-separator {
+      margin: 8px 0 16px 0;
+      border: none;
+      border-top: 1px solid #eee;
+    }
+    .habit-list { list-style: none; padding: 0; }
+    .habit-item {
+      display: flex; flex-direction: column; align-items: stretch;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 1.5em; margin-bottom: 1.5em;
+    }
+    .habit-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5em; }
+    .habit-name { font-weight: bold; font-size: 1.1em; }
+    .remove-btn {
+      background: none; border: none; color: #e53935;
+      font-size: 1.2em; cursor: pointer; margin-left: 8px;
+    }
+    .remove-btn:hover { color: #a31515; }
+    .calendar-table {
+      border-collapse: separate;
+      border-spacing: 4px;
+      margin-top: 0.5em;
+      width: 100%;
+      table-layout: fixed;
+    }
+    .calendar-table th, .calendar-table td {
+      text-align: center; vertical-align: middle; padding: 0;
+    }
+    .calendar-table th {
+      font-size: 13px; color: #388e3c; font-weight: 600; height: 32px; background: transparent;
+    }
+    .calendar-table td { height: 36px; }
+    .row-heading {
+      font-size: 14px; color: #388e3c; font-weight: bold; width: 52px; text-align: right; padding-right: 6px; background: transparent; border: none;
+    }
+    .day-square {
+      width: 30px; height: 30px; border-radius: 6px;
+      background: #e0e0e0;
+      color: #222;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 15px; user-select: none;
+      border: 1px solid #eee;
+      transition: background 0.2s, color 0.2s;
+      margin: 0 auto;
+    }
+    .day-square.yes { background: #4caf50; color: #fff; font-weight: bold; }
+    .day-square.no  { background: #e0e0e0; color: #222; }
+    .add-btn {
+      position: fixed; bottom: 32px; right: 32px; z-index: 100;
+      border-radius: 50%; width: 62px; height: 62px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      background: #4caf50;
+      font-size: 2em; text-align: center; color: #fff; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+    .add-btn:hover { background: #388e3c; }
+    .modal-bg {
+      display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.25); align-items: center; justify-content: center;
+    }
+    .modal-bg.active { display: flex; }
+    .modal {
+      background: #fff; color: #222;
+      border-radius: 12px; padding: 2em 1.5em 1.5em 1.5em; min-width: 260px; max-width: 90vw;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.18);
+      position: relative;
+    }
+    .modal-close {
+      position: absolute; top: 1em; right: 1em; background: none; border: none; font-size: 1.4em; color: #e53935; cursor: pointer;
+    }
+    .top-right-buttons {
+      position: absolute;
+      top: 1.2em;
+      right: 1.2em;
+      display: flex;
+      gap: 10px;
+      z-index: 10;
+    }
+    .excel-btn, .darkmode-btn {
+      background: #4caf50;
+      color: #fff;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      padding: 7px 15px;
+      font-size: 1em;
+      transition: background 0.3s;
+      margin: 0;
+      font-weight: 500;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      display: inline-block;
+    }
+    .excel-btn:hover, .darkmode-btn:hover { background: #388e3c;}
+    /* Dark mode */
+    body.dark {
+      background: #181a1b;
+      color: #eee;
+    }
+    body.dark .container, body.dark .modal {
+      background: #232627;
+      color: #eee;
+    }
+    body.dark .calendar-table th, body.dark .row-heading, body.dark .month-setting label {
+      color: #81c784;
+    }
+    body.dark .day-square {
+      background: #333;
+      color: #ccc;
+      border: 1px solid #262626;
+    }
+    body.dark .day-square.yes {
+      background: #81c784;
+      color: #fff;
+    }
+    body.dark .excel-btn, body.dark .darkmode-btn, body.dark .add-btn {
+      background: #81c784;
+      color: #232627;
+    }
+    body.dark .excel-btn:hover, body.dark .darkmode-btn:hover, body.dark .add-btn:hover {
+      background: #388e3c;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Top right export and dark mode buttons -->
+    <div class="top-right-buttons">
+      <button class="excel-btn" id="exportExcelBtn" title="Export all data to Excel">Export to Excel</button>
+      <button class="darkmode-btn" id="darkModeBtn" title="Toggle dark mode">Dark Mode</button>
+    </div>
+    <h1>Habit Tracker</h1>
+    <div class="month-setting">
+      <label for="monthInput">Month:</label>
+      <select id="monthInput"></select>
+    </div>
+    <hr class="month-separator"/>
+    <ul class="habit-list" id="habitList"></ul>
+  </div>
+  <!-- Floating add button -->
+  <button class="add-btn" id="addBtn" title="Add Habit">+</button>
+  <!-- Modal for Add Habit -->
+  <div class="modal-bg" id="addModal">
+    <div class="modal">
+      <button class="modal-close" id="closeModalBtn">&times;</button>
+      <h3>Add Habit</h3>
+      <form id="addHabitForm">
+        <input type="text" id="habitInput" placeholder="Habit name..." required style="margin-bottom: 0.8em; width: 100%;">
+        <button type="submit" style="width:100%;">Add</button>
+      </form>
+    </div>
+  </div>
+  <script>
+    // --- Util: Calendar weeks
+    function getMonthWeeks(monthVal) {
+      const [y, m] = monthVal.split('-').map(Number);
+      const firstDay = new Date(y, m - 1, 1);
+      const lastDay = new Date(y, m, 0);
+      let curr = new Date(firstDay);
+      curr.setDate(curr.getDate() - ((curr.getDay() + 6) % 7));
+      const weeks = [];
+      while (curr <= lastDay || weeks.length < 6) {
+        const week = [];
+        for (let i = 0; i < 7; i++) {
+          week.push({
+            date: curr.toISOString().slice(0,10),
+            inMonth: curr.getMonth() === (m - 1)
+          });
+          curr.setDate(curr.getDate() + 1);
+        }
+        weeks.push(week);
+        if (curr > lastDay && curr.getDay() === 1) break;
+      }
+      return weeks;
+    }
+    // --- Habits in localStorage
+    function loadHabits() {
+      return JSON.parse(localStorage.getItem('habits') || '[]');
+    }
+    function saveHabits(habits) {
+      localStorage.setItem('habits', JSON.stringify(habits));
+    }
+
+    // --- Render
+    function render() {
+      const monthVal = document.getElementById('monthInput').value;
+      const habits = loadHabits();
+      const weeks = getMonthWeeks(monthVal);
+      const weekdays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const habitList = document.getElementById('habitList');
+      habitList.innerHTML = '';
+      if (!habits.length) return;
+      habits.forEach((habit, idx) => {
+        const li = document.createElement('li');
+        li.className = 'habit-item';
+        // Name row with remove
+        const nameRow = document.createElement('div');
+        nameRow.className = 'habit-name-row';
+        nameRow.innerHTML = `<span class="habit-name">${habit.name}</span>`;
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.title = "Delete habit";
+        removeBtn.innerHTML = '&times;';
+        removeBtn.onclick = () => { if(confirm('Delete this habit?')) { habits.splice(idx, 1); saveHabits(habits); render(); } };
+        nameRow.appendChild(removeBtn);
+        li.appendChild(nameRow);
+        // Calendar table
+        const table = document.createElement('table');
+        table.className = 'calendar-table';
+        // Headings
+        const thead = document.createElement('thead');
+        const trH = document.createElement('tr');
+        trH.innerHTML = '<th></th>' + weekdays.map(d=>`<th>${d}</th>`).join('');
+        thead.appendChild(trH);
+        table.appendChild(thead);
+        // Weeks
+        const tbody = document.createElement('tbody');
+        weeks.forEach((week, widx) => {
+          const tr = document.createElement('tr');
+          const weekTd = document.createElement('td');
+          weekTd.className = 'row-heading';
+          weekTd.textContent = `Week ${widx + 1}`;
+          tr.appendChild(weekTd);
+          week.forEach(dayObj => {
+            const td = document.createElement('td');
+            if (!dayObj.inMonth) {
+              td.innerHTML = '';
+            } else {
+              const val = habit.days[dayObj.date] ? true : false;
+              const dayDiv = document.createElement('div');
+              dayDiv.className = 'day-square ' + (val ? 'yes' : 'no');
+              dayDiv.textContent = new Date(dayObj.date).getDate();
+              dayDiv.title = val ? 'Yes' : 'No';
+              dayDiv.style.cursor = 'pointer';
+              // Attach click handler
+              dayDiv.onclick = function(e) {
+                e.preventDefault();
+                habit.days[dayObj.date] = !habit.days[dayObj.date];
+                saveHabits(habits);
+                render();
+              };
+              td.appendChild(dayDiv);
+            }
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        li.appendChild(table);
+        habitList.appendChild(li);
+      });
+    }
+    // --- Month dropdown
+    function renderMonthDropdown() {
+      const monthInput = document.getElementById('monthInput');
+      // Past 6, current, next 6 months
+      const now = new Date();
+      now.setDate(1);
+      now.setMonth(now.getMonth() - 6);
+      let opts = [];
+      for (let i = 0; i < 13; i++) {
+        const y = now.getFullYear(), m = now.getMonth();
+        const v = `${y}-${(m+1).toString().padStart(2,'0')}`;
+        const l = now.toLocaleString('default', {month:'short'}) + '-' + String(y).slice(2);
+        opts.push(`<option value="${v}">${l}</option>`);
+        now.setMonth(m+1);
+      }
+      monthInput.innerHTML = opts.join('');
+      // Default to current month
+      const today = new Date();
+      const currVal = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2,'0')}`;
+      monthInput.value = currVal;
+    }
+    // --- Modal logic for Add Habit
+    function openAddModal() {
+      document.getElementById('addModal').classList.add('active');
+      document.getElementById('habitInput').focus();
+    }
+    function closeAddModal() {
+      document.getElementById('addModal').classList.remove('active');
+    }
+    // --- Excel Export
+    function exportToExcel() {
+      const habits = loadHabits();
+      if (!habits.length) {
+        alert("No habit data to export.");
+        return;
+      }
+      // Gather all unique dates
+      const allDatesSet = new Set();
+      habits.forEach(habit => {
+        Object.keys(habit.days || {}).forEach(d => allDatesSet.add(d));
+      });
+      const allDates = Array.from(allDatesSet).sort();
+      // Build rows: Header, then one per habit
+      const header = ['Habit'].concat(allDates);
+      const rows = [header];
+      habits.forEach(habit => {
+        const row = [habit.name];
+        allDates.forEach(date => {
+          row.push(habit.days[date] ? 'Yes' : 'No');
+        });
+        rows.push(row);
+      });
+      // Create CSV string (works in Excel)
+      const csv = rows.map(r => r.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'habit-tracker-data.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    }
+    // --- Dark mode
+    function setDarkMode(on) {
+      if (on) {
+        document.body.classList.add('dark');
+        localStorage.setItem('habit_dark_mode', '1');
+        document.getElementById('darkModeBtn').textContent = "Light Mode";
+      } else {
+        document.body.classList.remove('dark');
+        localStorage.setItem('habit_dark_mode', '0');
+        document.getElementById('darkModeBtn').textContent = "Dark Mode";
+      }
+    }
+    function isDarkMode() {
+      return localStorage.getItem('habit_dark_mode') === '1';
+    }
+
+    // --- On load
+    window.onload = function() {
+      renderMonthDropdown();
+      render();
+      document.getElementById('monthInput').onchange = render;
+      document.getElementById('addBtn').onclick = openAddModal;
+      document.getElementById('closeModalBtn').onclick = closeAddModal;
+      document.getElementById('addModal').onclick = function(e) {
+        if (e.target === this) closeAddModal();
+      };
+      document.getElementById('addHabitForm').onsubmit = function(e) {
+        e.preventDefault();
+        const val = document.getElementById('habitInput').value.trim();
+        if(val) {
+          const habits = loadHabits();
+          habits.push({name: val, days:{}});
+          saveHabits(habits);
+          closeAddModal();
+          render();
+        }
+      };
+      document.getElementById('exportExcelBtn').onclick = exportToExcel;
+      document.getElementById('darkModeBtn').onclick = function() {
+        setDarkMode(!isDarkMode());
+      };
+      // Set initial dark mode
+      setDarkMode(isDarkMode());
+      // Demo data if empty
+      if (!loadHabits().length) {
+        saveHabits([{name:'Read', days:{}}]);
+        render();
+      }
+    };
+  </script>
+</body>
+</html>
